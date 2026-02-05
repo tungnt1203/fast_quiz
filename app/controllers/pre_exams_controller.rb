@@ -53,14 +53,8 @@ class PreExamsController < ApplicationController
     gemini_key = Rails.application.credentials.gemini_api_key.presence || ENV["GEMINI_API_KEY"]
 
     if open_router_key.present? || gemini_key.present?
-      result = exam_session.fetch_correct_answers!
-      api_name = open_router_key.present? ? "OpenRouter" : "Gemini"
-      flash[:ai_answer_key_result] = "#{result[:success]}/#{result[:total]} questions (#{api_name})"
-      flash[:ai_answer_key_has_errors] = result[:errors].any?
-      if result[:errors].any?
-        err = result[:errors].first[:error].to_s
-        flash[:ai_answer_key_first_error] = err.length > 500 ? "#{err[0, 500]}..." : err
-      end
+      FetchExamAnswerKeyJob.perform_later(exam_session.id)
+      flash[:ai_answer_key_queued] = true
     else
       flash[:ai_answer_key_result] = "AI answer key is not configured (missing OPENROUTER_API_KEY / GEMINI_API_KEY)."
     end
